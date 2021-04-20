@@ -1,9 +1,20 @@
 import stmpy
+import paho.mqtt.client as mqtt
+from playsound import playsound
+
+MQTT_BROKER = 'mqtt.item.ntnu.no'
+MQTT_PORT = 1883
+
+MQTT_TOPIC_CHANNEL_BASE = 'ttm4115/team_16/channel/'
+MQTT_TOPIC_OUTPUT = 'ttm4115/team_16/answer'
 
 
 class Device(object):
 
-    def __init__(self):
+    def __init__(self, mqtt_client):
+        self.mqtt_client = mqtt_client
+        self.channel = None
+
         """ transitions """
         t0 = {
             "source": "initial",
@@ -112,7 +123,6 @@ class Device(object):
 
         reserve_channel_button = {'name': 'reserve_channel_buttton',
                                   'entry': 'channel_availability(); reserve_channel()'}
-
         speaking_voice = {'name': 'speaking_voice',
                           'entry': 'receiver(off);start_stream_audio();',
                           'exit': 'stop_stream_audio();release_channel();ack_timout("listen")'}
@@ -125,11 +135,19 @@ class Device(object):
                                  states=[off, no_channel, idle, reserve_channel_voice, reserve_channel_button, speaking_voice, speaking_button])
 
     def change_channel(self):
-        pass
+        new_channel = 1  # TODO hent channel fra UI
+        if not self.channel:
+            self.channel = new_channel
+            return self.mqtt_client.subscribe(MQTT_TOPIC_CHANNEL_BASE + str(new_channel) + "/#")
+        old_topic = MQTT_TOPIC_CHANNEL_BASE + str(self.channel) + "/#"
+        self.unsubscribe_channel()
+        self.channel = new_channel
+        return self.mqtt_client.subscribe(MQTT_TOPIC_CHANNEL_BASE + str(new_channel) + "/#")
 
     def unsubscribe_channel(self):
-        pass
-
+        channel_topic = MQTT_TOPIC_CHANNEL_BASE + str(self.channel) + "/#"
+        self.mqtt_client.unsubscribe(channel_topic)
+        
     def channel_availability(self):
         pass
 
@@ -152,4 +170,4 @@ class Device(object):
         pass
 
     def play_unavailable_sound(self):
-        pass
+        playsound("./assets/audio/unavailable_sound.mp3")

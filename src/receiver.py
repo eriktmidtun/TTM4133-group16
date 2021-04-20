@@ -3,8 +3,7 @@ from stmpy import Driver, Machine
 
 class Receiver:
 
-
-    # DEFINING THE TRANSITIONS
+# DEFINING THE TRANSITIONS
 t0 = {'source': 'initial',
       'target': 'receiver_off'}
 
