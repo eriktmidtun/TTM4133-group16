@@ -1,8 +1,10 @@
 import speech_recognition as sr
 from stmpy import Driver, Machine
 import time
+
+
 class VoiceRecognizer:
-    def __init__(self): #), device):
+    def __init__(self):  # ), device):
         self.over = False
         self.r = sr.Recognizer()
         self.mic = sr.Microphone(device_index=1)
@@ -10,11 +12,22 @@ class VoiceRecognizer:
 
         t0 = {'source': 'initial',
               'target': 'recognizer_off'}
-        t1 = {'trigger': 'on',
+        t1 = {'trigger': 'wake',
               'source': 'recognizer_off',
-              'target': 'recognizer_on',
-              'effect': 'check_for_word(*)'}
-        t2 = {'trigger': 'off',
+              'target': 'recognizer_on_wake', }
+        t2 = {'trigger': 'wake',
+              'source': 'recognizer_on_end',
+              'target': 'recognizer_on_wake', }
+        t3 = {'trigger': 'end',
+              'source': 'recognizer_off',
+              'target': 'recognizer_on_end', }
+        t4 = {'trigger': 'end',
+              'source': 'recognizer_on_wake',
+              'target': 'recognizer_on_end', }
+        t5 = {'trigger': 'off',
+              'source': 'recognizer_on_end',
+              'target': 'recognizer_off'}
+        t6 = {'trigger': 'off',
               'source': 'recognizer_on',
               'target': 'recognizer_off'}
 
@@ -22,12 +35,18 @@ class VoiceRecognizer:
             'name': 'recognizer_off',
             'entry': 'turn_off'
         }
-        recognizer_on = {
-            'name': 'recognizer_on',
+        recognizer_on_end = {
+            'name': 'recognizer_on_end',
+            'entry': 'check_for_word("over")'
         }
 
-        self.machine = Machine(name="voice_recognizer", transitions=[t0, t1, t2], obj=self,
-                                     states=[recognizer_off, recognizer_on])
+        recognizer_on_wake = {
+            'name': 'recognizer_on_wake',
+            'entry': 'check_for_word("braze")'
+        }
+
+        self.machine = Machine(name="voice_recognizer", transitions=[t0, t1, t2, t3, t4, t5, t6], obj=self,
+                               states=[recognizer_off, recognizer_on_wake, recognizer_on_end])
 
     def recognize_speech_from_mic(self, recognizer, mic):
         if not isinstance(recognizer, sr.Recognizer):
