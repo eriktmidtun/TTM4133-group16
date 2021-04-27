@@ -1,14 +1,15 @@
 import speech_recognition as sr
+from stmpy import Driver, Machine
 import time
 class VoiceRecognizer:
-    def __init__(self, device):
+    def __init__(self): #), device):
         self.over = False
         self.r = sr.Recognizer()
         self.mic = sr.Microphone(device_index=1)
-        self.device_driver = device_driver
+        # self.device_driver = device_driver
 
         t0 = {'source': 'initial',
-              'target': 'off'}
+              'target': 'recognizer_off'}
         t1 = {'trigger': 'on',
               'source': 'recognizer_off',
               'target': 'recognizer_on',
@@ -23,11 +24,10 @@ class VoiceRecognizer:
         }
         recognizer_on = {
             'name': 'recognizer_on',
-            'entry': 'check_for_word()'
         }
 
-        self.machine = stmpy.Machine(name="voice_recognizer", transitions=[t0, t1, t2],
-                                     states=[off, recognizer_off, recognizer_on])
+        self.machine = Machine(name="voice_recognizer", transitions=[t0, t1, t2], obj=self,
+                                     states=[recognizer_off, recognizer_on])
 
     def recognize_speech_from_mic(self, recognizer, mic):
         if not isinstance(recognizer, sr.Recognizer):
@@ -63,26 +63,35 @@ class VoiceRecognizer:
         print('Say something')
         time.sleep(1)
         PROMPT_LIMIT = 2
-        while not over:
+        print(self.over)
+        while not self.over:
             for i in range(PROMPT_LIMIT):
                 print('Now')
-                output = recognize_speech_from_mic(self.r, self.mic)
+                output = self.recognize_speech_from_mic(self.r, self.mic)
                 if output['transcription']:
                     break
                 if not output['success']:
                     break
-                print("Didnt catch end word. Try again")
+                print("Didn't catch the word. Try again")
 
             if output['error']:
                 print("ERROR: {}".format(output["error"]))
 
             print("You said: {}".format(output["transcription"]))
-            transcript = output["transcription"].lower()
-            if word.lower() in transcript:
-                self.turn_off()
+            transcript = output["transcription"]
+            if word in transcript:
+                self.over = True
+                print("Ended")
                 break
             else:
                 print("Not ended yet")
 
     def turn_off(self):
-        self.over = True
+        self.over = False
+
+# VoiceRecognizer = VoiceRecognizer()
+# driver = Driver()
+# driver.add_machine(VoiceRecognizer.machine)
+# driver.start()
+# time.sleep(2)
+# driver.send("on", "voice_recognizer", kwargs={"word":"over"})
