@@ -98,7 +98,7 @@ class VoiceRecognizer:
 
             print("You said: {}".format(output["transcription"]))
             transcript = output["transcription"]
-            if word in transcript:
+            if word in str(transcript):
                 self.over = True
                 print("Ended")
                 break

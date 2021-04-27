@@ -1,6 +1,6 @@
 import PySimpleGUI as sg
 
-sg.theme('DarkAmber')  # Add a touch of color
+sg.theme('DarkBlue')  # Add a touch of color
 # All the stuff inside your window.
 layout = [[sg.Text('Choose channel to subscribe to', key='_TextBox_')],
           [sg.Slider(range=(1, 10),
@@ -8,9 +8,9 @@ layout = [[sg.Text('Choose channel to subscribe to', key='_TextBox_')],
                      size=(20, 15),
                      orientation='horizontal',
                      font=('Helvetica', 12))],
-
           [sg.Button('Subscribe to channel'), sg.Button('Unsubscribe')],
-          [sg.Button('Push to talk')], # TODO: gjør den til en toggle button eller legg til en button til. Kan ikke skru av snakking nå
+          # TODO: gjør den til en toggle button eller legg til en button til. Kan ikke skru av snakking nå
+          [sg.Button('Push to talk')],
           [sg.Button('Power off')]]
 
 
@@ -33,7 +33,7 @@ while True:
         oldChannel = str(int(values[0]))
         print('You are unsubscribed from channel ', oldChannel)
         window['_TextBox_'].update('No active subscriptions')
-         #driver.send("unsubscribe_channel","device")
+        # driver.send("unsubscribe_channel","device")
     if event == 'Push to talk':
         print('Talk')
 

@@ -7,15 +7,15 @@ MQTT_BROKER = 'mqtt.item.ntnu.no'
 MQTT_PORT = 1883
 
 MQTT_TOPIC_CHANNEL_BASE = 'ttm4115/team_16/channel/'
-MQTT_TOPIC_OUTPUT = 'ttm4115/team_16/answer'
 
 
 class DeviceLogic(object):
 
-    def __init__(self, component):
+    def __init__(self, component, name="device"):
         self.component = component
         self.channel = None
         self.channel_available = False
+        self.name = name
 
         """ transitions """
         t0 = {
@@ -54,7 +54,7 @@ class DeviceLogic(object):
             "trigger": "button_in",
             "source": "idle",
             "target": "reserve_channel",
-            "effect": "voice_recognizer('off')",
+            "effect": "voice_recognizer(*)",  # off
         }
 
         t6 = {
@@ -86,14 +86,14 @@ class DeviceLogic(object):
             "trigger": "wake_word",
             "source": "idle",
             "target": "reserve_channel_voice",
-            "effect": "voice_recognizer('end')",
+            "effect": "voice_recognizer(*)",  # end
         }
 
         t11 = {
-            "trigger": "change_channel",
+            "trigger": "subscribe_channel",
             "source": "idle",
             "target": "idle",
-            "effect": "change_channel",
+            "effect": "change_channel(*)",
         }
 
         t12 = {
@@ -103,57 +103,58 @@ class DeviceLogic(object):
         }
 
         """ control states """
-        off = {'name': 'off'}
+        off = {'name': 'off',
+               'entry': "state('off')"}
 
-        no_channel = {'name': 'no_channel'}
+        no_channel = {'name': 'no_channel',
+                      'entry': "state('no_channel')"}
 
         idle = {'name': 'idle',
-                'entry': 'receiver(on);voice_recognizer("wake")'}
+                'entry': 'state("idle");receiver("on");voice_recognizer("wake")'}
 
         reserve_channel = {'name': 'reserve_channel',
-                           'entry': 'channel_availability(); reserve_channel()'}
+                           'entry': 'state("reserve_channel");channel_availability(); reserve_channel()'}
 
         speaking = {'name': 'speaking',
-                    'entry': 'receiver(off);start_stream_audio();',
+                    'entry': 'state("speaking");receiver("off");start_stream_audio();',
                     'exit': 'stop_stream_audio();release_channel();ack_timout("listen")'}
 
-        self.machine = stmpy.Machine(name="Device" transitions=[t0, t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12],
-                                     states=[off, no_channel, idle, reserve_channel, speaking])
+        self.stm = stmpy.Machine(name=self.name, transitions=[t0, t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12],
+                                 states=[off, no_channel, idle, reserve_channel, speaking], obj=self)
 
-    def change_channel(self):
-        new_channel = 1  # TODO hent channel fra UI
+    def change_channel(self, channel):
+        if not channel:
+            return
+        new_channel = channel
         if not self.channel:
             self.channel = new_channel
-            return self.mqtt_client.subscribe(MQTT_TOPIC_CHANNEL_BASE + str(new_channel) + "/#")
-        old_topic = MQTT_TOPIC_CHANNEL_BASE + str(self.channel) + "/#"
+            return self.component.mqtt_client.subscribe(MQTT_TOPIC_CHANNEL_BASE + str(new_channel) + "/#")
         self.unsubscribe_channel()
         self.channel = new_channel
-        return self.mqtt_client.subscribe(MQTT_TOPIC_CHANNEL_BASE + str(new_channel) + "/#")
+        return self.component.mqtt_client.subscribe(MQTT_TOPIC_CHANNEL_BASE + str(new_channel) + "/#")
 
     def unsubscribe_channel(self):
         channel_topic = MQTT_TOPIC_CHANNEL_BASE + str(self.channel) + "/#"
-        self.mqtt_client.unsubscribe(channel_topic)
+        self.component.mqtt_client.unsubscribe(channel_topic)
 
     def channel_availability(self):
-        reserve_topic = MQTT_TOPIC_CHANNEL_BASE + \
-            str(self.channel) + "/reserve"
-        if self.channel_unavailable:
-            self.machine.send('channel_unavailable')
+        if not self.channel_available:
+            self.component.driver.send('channel_unavailable', 'device')
             return False
         return True
 
     def reserve_channel(self):
         reserve_topic = MQTT_TOPIC_CHANNEL_BASE + \
             str(self.channel) + "/reserve"
-        if self.channel_availability()
-        self.mqtt_client.publish(reserve_topic, payload="")
+        if self.channel_availability():
+            self.component.publish_message(reserve_topic, payload="")
         pass
 
     def release_channel(self):
         pass
 
     def receiver(self, message):
-        pass
+        self.component.driver.send(message, "receiver")
 
     def start_stream_audio(self):
         pass
@@ -162,27 +163,37 @@ class DeviceLogic(object):
         pass
 
     def ack_timout(self, message):
-        if message != "listen"
-        return  # Error
-        self.driver.send("")
+        if message != "listen":
+            return  # Error
+        self.component.driver.send(message, "ack_timeout")
+        return
 
     def voice_recognizer(self, message):
-        self.driver.send("")
+        self.component.driver.send(message, "voice_recognizer")
 
     def play_unavailable_sound(self):
-        playsound("./assets/audio/unavailable_sound.mp3")
+        try:
+            playsound("./assets/audio/unavailable_sound.mp3")
+        except:
+            print("Error sound could not be played")
+
+    def state(self, state):
+        if not state:
+            return
+        print("You are in state: {}".format(state))
 
 
 class Device(object):
 
-    def __init__(self, mqtt_client, driver):
-        self.mqtt_client = mqtt_client
+    def __init__(self, driver):
+        self.mqtt_client = mqtt.Client()
         self.mqtt_client.on_connect = self.on_connect
         self.mqtt_client.on_message = self.on_message
         self.mqtt_client.connect(MQTT_BROKER, MQTT_PORT)
         self.driver = driver
-        self.stm = DeviceLogic(self)
-        driver.add_machine(self.stm.machine)
+        device = DeviceLogic(self)
+        self.stm = device.stm
+        # driver.add_machine(self.stm.machine)
 
     def on_connect(self):
         print("connected")
@@ -195,6 +206,6 @@ class Device(object):
                 msg.topic, err))
             return
 
-    def publish_message(self, data):
+    def publish_message(self, topic, data):
         payload = json.dumps(data)
-        self.mqtt_client.publish(MQTT_TOPIC_INPUT, payload=payload, qos=2)
+        self.mqtt_client.publish(topic, payload=payload, qos=2)
