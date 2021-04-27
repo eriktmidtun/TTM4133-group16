@@ -7,14 +7,14 @@ class VoiceRecognizer:
         self.mic = sr.Microphone(device_index=1)
         self.device_driver = device_driver
 
-        t0 = {'source': 'initial'
+        t0 = {'source': 'initial',
               'target': 'off'}
-        t1 = {'trigger': 'on'
-              'source': 'recognizer_off'
+        t1 = {'trigger': 'on',
+              'source': 'recognizer_off',
               'target': 'recognizer_on',
               'effect': 'check_for_word(*)'}
-        t2 = {'trigger': 'off'
-              'source': 'recognizer_on'
+        t2 = {'trigger': 'off',
+              'source': 'recognizer_on',
               'target': 'recognizer_off'}
 
         recognizer_off = {
@@ -26,7 +26,7 @@ class VoiceRecognizer:
             'entry': 'check_for_word()'
         }
 
-        self.machine = stmpy.Machine(name="voice_recognizer" transitions=[t0, t1, t2],
+        self.machine = stmpy.Machine(name="voice_recognizer", transitions=[t0, t1, t2],
                                      states=[off, recognizer_off, recognizer_on])
 
     def recognize_speech_from_mic(self, recognizer, mic):
