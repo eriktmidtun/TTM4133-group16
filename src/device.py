@@ -11,11 +11,12 @@ MQTT_TOPIC_CHANNEL_BASE = 'ttm4115/team_16/channel/'
 
 class DeviceLogic(object):
 
-    def __init__(self, component, name="device"):
+    def __init__(self, component, name="device", id=1):
         self.component = component
         self.channel = None
         self.channel_available = False
         self.name = name
+        self.id = id
 
         """ transitions """
         t0 = {
@@ -47,7 +48,6 @@ class DeviceLogic(object):
             "source": "idle",
             "target": "no_channel",
             "effect": "unsubscribe_channel",
-
         }
 
         t5 = {
@@ -124,43 +124,49 @@ class DeviceLogic(object):
 
     def change_channel(self, channel):
         if not channel:
+            print("no channel given")
             return
         new_channel = channel
         if not self.channel:
             self.channel = new_channel
-            return self.component.mqtt_client.subscribe(MQTT_TOPIC_CHANNEL_BASE + str(new_channel) + "/#")
+            self.component.mqtt_client.subscribe(MQTT_TOPIC_CHANNEL_BASE + str(new_channel) + "/#")
+            return 
         self.unsubscribe_channel()
         self.channel = new_channel
-        return self.component.mqtt_client.subscribe(MQTT_TOPIC_CHANNEL_BASE + str(new_channel) + "/#")
+        self.component.mqtt_client.subscribe(MQTT_TOPIC_CHANNEL_BASE + str(new_channel) + "/#")
+        return 
 
     def unsubscribe_channel(self):
         channel_topic = MQTT_TOPIC_CHANNEL_BASE + str(self.channel) + "/#"
         self.component.mqtt_client.unsubscribe(channel_topic)
 
     def channel_availability(self):
-        if not self.channel_available:
+        pass
+
+        """ if not self.channel_available:
             self.component.driver.send('channel_unavailable', 'device')
-            return False
-        return True
+            return False """
 
     def reserve_channel(self):
         reserve_topic = MQTT_TOPIC_CHANNEL_BASE + \
             str(self.channel) + "/reserve"
-        if self.channel_availability():
-            self.component.publish_message(reserve_topic, payload="")
-        pass
+        data = {"device_id": self.id, "reserved": True}
+        self.component.publish_message(reserve_topic, data, retain=True)
 
     def release_channel(self):
-        pass
+        reserve_topic = MQTT_TOPIC_CHANNEL_BASE + \
+            str(self.channel) + "/reserve"
+        data = {"device_id": self.id, "reserved": False}
+        self.component.publish_message(reserve_topic, data, retain=True)
 
     def receiver(self, message):
         self.component.driver.send(message, "receiver")
 
     def start_stream_audio(self):
-        pass
+        self.component.driver.send("start", "receiver")
 
     def stop_stream_audio(self):
-        pass
+        self.component.driver.send("done", "receiver")
 
     def ack_timout(self, message):
         if message != "listen":
@@ -189,23 +195,28 @@ class Device(object):
         self.mqtt_client = mqtt.Client()
         self.mqtt_client.on_connect = self.on_connect
         self.mqtt_client.on_message = self.on_message
+        self.mqtt_client.on_subscribe = self.on_subscribe
         self.mqtt_client.connect(MQTT_BROKER, MQTT_PORT)
+        self.mqtt_client.loop_start()
         self.driver = driver
-        device = DeviceLogic(self)
-        self.stm = device.stm
-        # driver.add_machine(self.stm.machine)
+        self.device = DeviceLogic(self)
+        self.stm = self.device.stm
 
-    def on_connect(self):
+    def on_connect(self, client, userdata, flags, rc):
         print("connected")
+    
+    def on_subscribe(self,client, userdata, mid, granted_qos):
+        print("subscribed")
 
     def on_message(self, client, userdata, msg):
         try:
             payload = json.loads(msg.payload.decode("utf-8"))
+            print(payload)
         except Exception as err:
             print('Message sent to topic {} had no valid JSON. Message ignored. {}'.format(
                 msg.topic, err))
-            return
+        
 
-    def publish_message(self, topic, data):
+    def publish_message(self, topic, data, retain=False):
         payload = json.dumps(data)
-        self.mqtt_client.publish(topic, payload=payload, qos=2)
+        self.mqtt_client.publish(topic, payload=payload, qos=2, retain=retain)

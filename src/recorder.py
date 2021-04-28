@@ -6,23 +6,34 @@ import time
 import pyaudio
 import wave
 
-        
+
 class Recorder:
     def __init__(self):
         self.recording = False
-        self.chunk = 1024  
-        self.sample_format = pyaudio.paInt16  
+        self.chunk = 1024
+        self.sample_format = pyaudio.paInt16
         self.channels = 2
-        self.fs = 44100  
+        self.fs = 44100
         self.filename = "output.wav"
-        self.p = pyaudio.PyAudio() 
-        
+        self.p = pyaudio.PyAudio()
+
+        t0 = {'source': 'initial', 'target': 'ready'}
+        t1 = {'trigger': 'start', 'source': 'ready', 'target': 'recording'}
+        t2 = {'trigger': 'done', 'source': 'recording', 'target': 'processing'}
+        t3 = {'trigger': 'done', 'source': 'processing', 'target': 'ready'}
+
+        s_recording = {'name': 'recording', 'do': 'record()', "stop": "stop()"}
+        s_processing = {'name': 'processing', 'do': 'process()'}
+
+        self.stm = Machine(name='recorder', transitions=[t0, t1, t2, t3], states=[
+              s_recording, s_processing], obj=self)
+
     def record(self):
         stream = self.p.open(format=self.sample_format,
-                channels=self.channels,
-                rate=self.fs,
-                frames_per_buffer=self.chunk,
-                input=True)
+                             channels=self.channels,
+                             rate=self.fs,
+                             frames_per_buffer=self.chunk,
+                             input=True)
         self.frames = []  # Initialize array to store frames
         # Store data in chunks for 3 seconds
         self.recording = True
@@ -30,16 +41,16 @@ class Recorder:
             data = stream.read(self.chunk)
             self.frames.append(data)
         print("done recording")
-        # Stop and close the stream 
+        # Stop and close the stream
         stream.stop_stream()
         stream.close()
         # Terminate the PortAudio interface
         self.p.terminate()
-        
+
     def stop(self):
         print("stop")
         self.recording = False
-    
+
     def process(self):
         print("processing")
         # Save the recorded data as a WAV file
@@ -50,17 +61,11 @@ class Recorder:
         wf.writeframes(b''.join(self.frames))
         wf.close()
 
-recorder = Recorder()
-        
-t0 = {'source': 'initial', 'target': 'ready'}
-t1 = {'trigger': 'start', 'source': 'ready', 'target': 'recording'}
-t2 = {'trigger': 'done', 'source': 'recording', 'target': 'processing'}
-t3 = {'trigger': 'done', 'source': 'processing', 'target': 'ready'}
 
-s_recording = {'name': 'recording', 'do': 'record()', "stop": "stop()"}
-s_processing = {'name': 'processing', 'do': 'process()'}
+""" recorder = Recorder()
 
-stm = Machine(name='stm', transitions=[t0, t1, t2, t3], states=[s_recording, s_processing], obj=recorder)
+
+
 recorder.stm = stm
 
 driver = Driver()
@@ -74,4 +79,4 @@ print("sent start, now waiting for a 5 seconds long recording")
 time.sleep(5)
 print("wait is over")
 driver.send('stop', 'stm')
-print("sent stop")
+print("sent stop") """

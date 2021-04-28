@@ -1,6 +1,7 @@
 import speech_recognition as sr
 from stmpy import Driver, Machine
 import time
+import pyaudio
 
 
 class VoiceRecognizer:
@@ -42,10 +43,10 @@ class VoiceRecognizer:
 
         recognizer_on_wake = {
             'name': 'recognizer_on_wake',
-            'entry': 'check_for_word("braze")'
+            'entry': 'check_for_word("wake")'
         }
 
-        self.machine = Machine(name="voice_recognizer", transitions=[t0, t1, t2, t3, t4, t5, t6], obj=self,
+        self.stm = Machine(name="voice_recognizer", transitions=[t0, t1, t2, t3, t4, t5, t6], obj=self,
                                states=[recognizer_off, recognizer_on_wake, recognizer_on_end])
 
     def recognize_speech_from_mic(self, recognizer, mic):
@@ -108,9 +109,19 @@ class VoiceRecognizer:
     def turn_off(self):
         self.over = False
 
-# VoiceRecognizer = VoiceRecognizer()
-# driver = Driver()
-# driver.add_machine(VoiceRecognizer.machine)
-# driver.start()
-# time.sleep(2)
-# driver.send("on", "voice_recognizer", kwargs={"word":"over"})
+def print_devices():
+    p = pyaudio.PyAudio()
+    info = p.get_host_api_info_by_index(0)
+    numdevices = info.get('deviceCount')
+    for i in range(0, numdevices):
+            if (p.get_device_info_by_host_api_device_index(0, i).get('maxInputChannels')) > 0:
+                print("Input Device id ", i, " - ", p.get_device_info_by_host_api_device_index(0, i), "\n")
+
+
+""" VoiceRecognizer = VoiceRecognizer()
+print_devices()
+driver = Driver()
+driver.add_machine(VoiceRecognizer.stm)
+driver.start()
+time.sleep(2)
+driver.send("end", "voice_recognizer", kwargs={"word":"over"}) """
