@@ -4,6 +4,7 @@ import time
 import PySimpleGUI as sg
 
 from device import Device
+from play_sound import play_sound
 from recorder import Recorder
 from voice_recognizer import VoiceRecognizer
 #from receiver import Receiver
@@ -48,6 +49,7 @@ def application(driver):
     while True:
         event, values = window.read()
         if event == sg.WIN_CLOSED or event == 'Power off':  # if user closes window or clicks cancel
+            play_sound("./src/assets/audio/error_sound.wav")
             break
         if event == 'Subscribe to channel':
             channel = str(int(values[0]))
