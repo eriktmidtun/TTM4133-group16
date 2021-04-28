@@ -4,6 +4,8 @@ import time
 import PySimpleGUI as sg
 
 from device import Device
+from recorder import Recorder
+from voice_recognizer import VoiceRecognizer
 #from receiver import Receiver
 #from ack_timout import AckTimeout
 
@@ -12,27 +14,30 @@ sg.theme('DarkBlue')
 layout = [[sg.Text('Choose channel to subscribe to', key='_TextBox_')],
           [sg.Slider(range=(1, 10),
                      default_value=5,
-                     size=(20, 15),
+                     size=(600, 25),
                      orientation='horizontal',
                      font=('Helvetica', 12))],
           [sg.Button('Subscribe to channel'), sg.Button('Unsubscribe')],
           # TODO: gjør den til en toggle button eller legg til en button til. Kan ikke skru av snakking nå
-          [sg.Button('Push to talk')],
-          [sg.Button('Power off')]]
-window = sg.Window('Braze device', layout)
+          [sg.Button('Push to talk',font=('Helvetica',20))],
+          [sg.Button('Power off', font=('Helvetica',20))]]
+window = sg.Window('Braze device', layout, size=(600,400))
 
 
 """ Setup """
 mqtt_client = mqtt.Client()
 driver = stmpy.Driver()
 device = Device(driver)
+recorder = Recorder()
+recorder = Recorder()
+voicerecognizer = VoiceRecognizer()
 #receiver = Receiver(mqtt_client)
 #ackTimeout = AckTimeout(mqtt_client)
 
 driver.add_machine(device.stm)
-# driver.add_machine(ackTimeout.stm)
+driver.add_machine(voicerecognizer.stm)
+driver.add_machine(recorder.stm)
 # driver.add_machine(receiver.stm)
-
 
 def application(driver):
     channel = ''
@@ -63,5 +68,6 @@ def application(driver):
                         kwargs=({"message": "off"}))
     driver.stop()
     window.close()
+
 
 application(driver)
