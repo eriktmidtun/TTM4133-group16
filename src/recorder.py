@@ -60,13 +60,12 @@ class Recorder:
         wf.setframerate(self.fs)
         wf.writeframes(b''.join(self.frames))
         wf.close()
+        print("done processing")
 
 
 """ recorder = Recorder()
 
-
-
-recorder.stm = stm
+stm = recorder.stm
 
 driver = Driver()
 driver.add_machine(stm)
@@ -74,9 +73,10 @@ driver.start()
 
 print("driver started")
 
-driver.send('start', 'stm')
-print("sent start, now waiting for a 5 seconds long recording")
-time.sleep(5)
+driver.send('start', 'recorder')
+print("sent start, now waiting for a 2 seconds long recording")
+time.sleep(2)
 print("wait is over")
-driver.send('stop', 'stm')
-print("sent stop") """
+driver.send('stop', 'recorder')
+print("sent stop")
+driver.stop() """

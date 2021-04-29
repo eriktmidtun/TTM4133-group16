@@ -1,6 +1,8 @@
 from stmpy import Driver, Machine
 import pyaudio
 import wave
+from play_sound import play_sound
+
 
 class Receiver:
     def __init__(self, mqtt_client):
@@ -39,22 +41,25 @@ class Receiver:
         # DEFINING THE STATES
         receiver_off = {
             'name': 'receiver_off',
+            'entry': 'state("receiver_off")'
         }
 
         receiver_on = {
-            'name': 'receiver_on'
+            'name': 'receiver_on',
+            'entry': 'state("receiver_on")'
         }
 
         play_voice_message = {
             'name': 'play_voice_message',
-            'entry': 'play_message'
+            'entry': 'state("play_voice_message");play_message'
         }
 
-        self.stm = Machine(name='receiver', transitions=[t0, t1, t2, t3, t4], obj=receiver,
+        self.stm = Machine(name='receiver', transitions=[t0, t1, t2, t3, t4], obj=self,
                            states=[receiver_on, receiver_off, play_voice_message])
 
     def play_message(self):
         filename = 'output.wav'
+        print("Trying to play incoming message")
 
         # Set chunk size of 1024 samples per data frame
         chunk = 1024
@@ -74,6 +79,7 @@ class Receiver:
 
         # Read data in chunks
         data = wf.readframes(chunk)
+        print("message done")
 
         # Play the sound by writing the audio data to the stream
         while data != '':
@@ -83,6 +89,14 @@ class Receiver:
         # Close and terminate the stream
         stream.close()
         p.terminate()
+        
+        self.stm.send('message_done')
+        print("message done")
 
     def play_error_sound(self):
-        playsound("./assets/audio/error_sound.mp3")
+        play_sound("./src/assets/audio/error_sound.mp3")
+
+    def state(self, state):
+        if not state:
+            return
+        print("RECEIVER state: {}".format(state))
