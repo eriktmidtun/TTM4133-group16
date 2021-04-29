@@ -5,71 +5,90 @@ import PySimpleGUI as sg
 
 from device import Device
 from play_sound import play_sound
-from recorder import Recorder
+#from recorder import Recorder
 from voice_recognizer import VoiceRecognizer
-#from receiver import Receiver
+from receiver import Receiver
 #from ack_timout import AckTimeout
 
 """ GUI """
 sg.theme('DarkBlue')
+button_subscribe = sg.Button('Subscribe to channel',font=('Helvetica',20))
+button_unsubscribe = sg.Button('Unsubscribe', disabled=True, font=('Helvetica',20))
+button_in = sg.Button('Button_in', disabled=True, font=('Helvetica',20))
+button_out= sg.Button('Button_out', disabled=True, font=('Helvetica',20))
+
 layout = [[sg.Text('Choose channel to subscribe to', key='_TextBox_',font=('Helvetica',20) )],
           [sg.Slider(range=(1, 10),
                      default_value=5,
                      size=(600, 25),
                      orientation='horizontal',
                      font=('Helvetica', 20))],
-          [sg.Button('Subscribe to channel',font=('Helvetica',20)), sg.Button('Unsubscribe',font=('Helvetica',20))],
-          # TODO: gjør den til en toggle button eller legg til en button til. Kan ikke skru av snakking nå
-          [sg.Button('Push to talk',font=('Helvetica',20))],
-          [sg.Button('Power off', font=('Helvetica',20))]]
+          [button_subscribe, button_unsubscribe],
+          [button_in, button_out],
+          [sg.Button('Power off', font=('Helvetica',20))],
+          [sg.Button('Message', font=('Helvetica',20))]]
 window = sg.Window('Braze device', layout, size=(1000,500))
 
 
 """ Setup """
 mqtt_client = mqtt.Client()
-driver = stmpy.Driver()
-device = Device(driver)
-#recorder = Recorder()
-# driver = stmpy.Driver()
-# voicerecognizer = VoiceRecognizer()
-#receiver = Receiver(mqtt_client)
+main_driver = stmpy.Driver()
+second_driver = stmpy.Driver()
+device = Device(main_driver, second_driver)
+#recorder = Recorder()  
+receiver = Receiver(mqtt_client)
 #ackTimeout = AckTimeout(mqtt_client)
 
-driver.add_machine(device.stm)
-#driver.add_machine(voicerecognizer.stm)
-#driver.add_machine(recorder.stm)
-# driver.add_machine(receiver.stm)
+voicerecognizer = VoiceRecognizer(main_driver)
 
-def application(driver):
+main_driver.add_machine(device.stm)
+#main_driver.add_machine(recorder.stm)
+main_driver.add_machine(receiver.stm)
+second_driver.add_machine(voicerecognizer.stm)
+
+def application(main_driver, second_driver):
     channel = ''
     oldChannel = ''
-    driver.start(keep_active=True)
-    driver.send("switch_on", "device")
+    main_driver.start(keep_active=True)
+    second_driver.start(keep_active=True)
+    main_driver.send("switch_on", "device")
     # Event Loop to process "events" and get the "values" of the inputs
     while True:
         event, values = window.read()
         if event == sg.WIN_CLOSED or event == 'Power off':  # if user closes window or clicks cancel
-            play_sound("./src/assets/audio/error_sound.wav")
             break
         if event == 'Subscribe to channel':
             channel = str(int(values[0]))
-            print('You are subscribed to channel ' + channel)
-            window['_TextBox_'].update(
-                'You are subscribed to channel ' + channel)
-            driver.send("subscribe_channel", "device",
+            main_driver.send("subscribe_channel", "device",
                         kwargs=({"channel": channel}))
+            button_in.update(disabled=False)
+            button_unsubscribe.update(disabled=False)
+            if device.get_channel() != None:
+                print('You are subscribed to channel ' + channel)
+                window['_TextBox_'].update(
+                    'You are subscribed to channel ' + channel)
 
         if event == 'Unsubscribe':
             oldChannel = str(int(values[0]))
             print('You are unsubscribed from channel ', oldChannel)
             window['_TextBox_'].update('No active subscriptions')
-            driver.send("unsubscribe_channel", "device")
-        if event == 'Push to talk':
-            print('Talk')
-            driver.send("button_in", "device",
+            main_driver.send("unsubscribe_channel", "device")
+            button_in.update(disabled=True)
+            button_unsubscribe.update(disabled=True)
+
+        if event == 'Button_in':
+            main_driver.send("button_in", "device",
                         kwargs=({"message": "off"}))
-    driver.stop()
+            button_in.update(disabled=True)
+            button_out.update(disabled=False)
+        if event == 'Button_out':
+            main_driver.send("button_out", "device")
+            button_in.update(disabled=False)
+            button_out.update(disabled=True)
+        if event == 'Message':
+            main_driver.send("message", "receiver")
+    main_driver.stop()
+    second_driver.stop()
     window.close()
 
-
-application(driver)
+application(main_driver,second_driver)
