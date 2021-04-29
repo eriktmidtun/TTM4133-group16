@@ -79,12 +79,13 @@ class Receiver:
 
         # Read data in chunks
         data = wf.readframes(chunk)
-        print("message done")
 
         # Play the sound by writing the audio data to the stream
         while data != '':
             stream.write(data)
             data = wf.readframes(chunk)
+            if len(data) == 0:
+                break
 
         # Close and terminate the stream
         stream.close()
