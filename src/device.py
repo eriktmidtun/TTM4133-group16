@@ -237,8 +237,9 @@ class Device(object):
     def on_subscribe(self, client, userdata, mid, granted_qos):
         client.message_callback_add(self.make_topic_string(
             "/reserve"), self.on_reserve_message)
-        client.message_callback_add(self.make_topic_string(
-            "/audio"), self.receiver.on_audio_message)
+        audiotopic = self.make_topic_string("/audio")
+        print("Trying to make callback", audiotopic)
+        client.message_callback_add(audiotopic, self.receiver.on_audio_message)
         self._logger.debug('MQTT subsribed to {}'.format(
             self.make_topic_string("/#")))
 
@@ -259,12 +260,6 @@ class Device(object):
 
     def on_message(self, client, userdata, msg):
         print("on_message: ", "userdata", userdata, "\nmsg", msg)
-        try:
-            payload = json.loads(msg.payload.decode("utf-8"))
-            print(payload)
-        except Exception as err:
-            print('Message sent to topic {} had no valid JSON. Message ignored. {}'.format(
-                msg.topic, err))
 
     def publish_message(self, topic, data, retain=False):
         payload = json.dumps(data)

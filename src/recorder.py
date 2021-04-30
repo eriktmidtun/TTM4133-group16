@@ -77,13 +77,24 @@ class Recorder:
         byteArray = bytearray(imagestring)
         print(byteArray[0:12])
         print(byteArray[-12:])
-        imageStringEncoded = base64.b64encode(byteArray)
+
+        byteArrayEncoded = base64.b64encode(byteArray)
+        imageStringEncoded = base64.b64encode(imagestring)
+        #print("bytearrayEncoded", byteArrayEncoded)
+        #print("imageStringEncoded", imageStringEncoded)
+        #print('imageStringEncoded utf8',imageStringEncoded.decode('utf-8') )
+
+        #print(imageStringEncoded[0:12])
+        #print(imageStringEncoded[-12:])
+        print("type",type(imageStringEncoded))
         print("done processing")
         print("start sending")
-        data = {'id': 1, 'audio': str(imageStringEncoded)}
-        print(data)
+        audioString = imageStringEncoded.decode('utf-8')
+        print(audioString[0:12])
+        data = {'id': 1, 'audio': audioString}
+        #print(data)
         payload = json.dumps(data)
-        self.mqtt_client.publish(self.device.make_topic_string("audio"), payload=payload, qos=2, retain=True)
+        self.mqtt_client.publish(self.device.make_topic_string("/audio"), payload=payload, qos=2, retain=True)
         #print(imageStringEncoded)
 
 

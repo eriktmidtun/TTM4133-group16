@@ -60,18 +60,21 @@ class Receiver:
 
     def on_audio_message(self, client, userdata, msg):
         print("RECEIVER on_audio_message")
-        filename = 'output.wav'
+        filename = 'input.wav'
         print(msg.topic, msg.payload)
         try:
-            payload = json.loads(msg.payload.decode("utf-8"))
+            payload = json.loads(msg.payload)
         except Exception as err:
             print('Message sent to topic {} had no valid JSON. Message ignored. {}'.format(
                 msg.topic, err))
         print("RECEIVER: json loaded")
         #device_id = payload.get("id")
         audioString = payload["audio"]
-        print(audioString[0:12])
-        imageStringDecoded = base64.b64decode(bytearray(audioString))
+        print("RECEIVER audiostring type" ,type(audioString))
+        print("RECEIVER audiostring" ,audioString[0:12])
+        bytearr = bytearray(audioString.encode("ascii"))
+        print("bytearr type", type(bytearr), bytearr[0:12] )
+        imageStringDecoded = base64.b64decode(bytearr)
         print("RECEIVER: audioString decoded")
         f = open(filename, 'wb')
         f.write(imageStringDecoded)
@@ -80,7 +83,7 @@ class Receiver:
         self.stm.send("message")
 
     def play_message(self):
-        filename = 'output.wav'
+        filename = 'input.wav'
         print("RECEIVER: Trying to play incoming message")
 
         # Set chunk size of 1024 samples per data frame
