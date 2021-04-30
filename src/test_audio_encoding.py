@@ -23,6 +23,46 @@ def process():
 
     f = open("output_2.wav", "rb")
     imagestring = f.read()
+    print("type(imagestring)", type(imagestring))
+    f.close()
+
+    # endoding
+    byteArray = bytearray(imagestring)
+    print("1",byteArray[0:12])
+    print("2",byteArray[-12:])
+    print("imagesring",byteArray[0:100])
+    
+    encoded = base64.b64encode(byteArray)  # b'ZGF0YSB0byBiZSBlbmNvZGVk' (notice the "b")
+    print("encoded",encoded[0:100])
+    data = {'audio': encoded.decode('ascii')}
+
+    
+    payload = json.dumps(data) 
+    #print("payload", payloa)
+    data = json.loads(payload)                    # 'ZGF0YSB0byBiZSBlbmNvZGVk'
+
+    
+    decoded = base64.b64decode(data['audio'])  # b'data to be encoded'
+    #imageStringEncoded = base64.b64encode(imagestring)
+    #imageStringEncoded = byteArray.decode('utf8').replace("'",'"')
+    print("decoded test", decoded[0:100])
+
+    print(data['audio'])
+    
+    return data['audio']
+
+def process_works():
+    print("processing")
+    # Save the recorded data as a WAV file
+    """ wf = wave.open(filename, 'wb')
+    wf.setnchannels(channels)
+    wf.setsampwidth(p.get_sample_size(sample_format))
+    wf.setframerate(fs)
+    wf.writeframes(b''.join(frames))
+    wf.close() """
+
+    f = open("output_2.wav", "rb")
+    imagestring = f.read()
     f.close()
 
     # endoding
@@ -34,6 +74,17 @@ def process():
 
     return imageStringEncoded
 
+def to_json(imageStringEncoded):
+    print("to_json", )
+    data = {'id': 1, 'audio': imageStringEncoded}
+    payload = json.dumps(data)
+    print(type(payload), payload)
+    return payload
+
+def from_json(imageStringEncoded):
+    payload = json.loads(imageStringEncoded)
+    return payload
+
 def write_to_file(imageStringEncoded):
     bytearr = bytearray(imageStringEncoded)
     imageStringDecoded = base64.b64decode(bytearr)
@@ -42,8 +93,10 @@ def write_to_file(imageStringEncoded):
     f.write(imageStringDecoded)
     f.close()
 
-def to_json():
-    
+
+
+
+
 
 def on_audio_message():
     filename = 'input.wav'
@@ -98,6 +151,6 @@ def play_message():
     p.terminate()
     print("message done")
 
-imageStringEncoded = process()
+imageStringEncoded = process_works()
 write_to_file(imageStringEncoded)
 play_message()

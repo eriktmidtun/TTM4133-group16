@@ -94,7 +94,7 @@ class Recorder:
         data = {'id': 1, 'audio': audioString}
         #print(data)
         payload = json.dumps(data)
-        self.mqtt_client.publish(self.device.make_topic_string("/audio"), payload=payload, qos=2, retain=True)
+        self.mqtt_client.publish(self.device.make_topic_string("/audio"), payload=imageStringEncoded, qos=2, retain=True)
         #print(imageStringEncoded)
 
 

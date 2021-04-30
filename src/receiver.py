@@ -59,7 +59,7 @@ class Receiver:
                            states=[receiver_on, receiver_off, play_voice_message])
 
     def on_audio_message(self, client, userdata, msg):
-        print("RECEIVER on_audio_message")
+        """ print("RECEIVER on_audio_message")
         filename = 'input.wav'
         print(msg.topic, msg.payload)
         try:
@@ -77,6 +77,16 @@ class Receiver:
         imageStringDecoded = base64.b64decode(bytearr)
         print("RECEIVER: audioString decoded")
         f = open(filename, 'wb')
+        f.write(imageStringDecoded)
+        f.close()
+        print("RECEIVER: audio written")
+        self.stm.send("message") """
+        data = msg.payload.decode("utf-8")
+
+        bytearr = bytearray(data)
+        imageStringDecoded = base64.b64decode(bytearr)
+        print("decoded")
+        f = open("input.wav", 'wb')
         f.write(imageStringDecoded)
         f.close()
         print("RECEIVER: audio written")
