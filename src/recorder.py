@@ -75,7 +75,7 @@ class Recorder:
 
         # endoding
         byteArray = bytearray(imagestring)
-        print(byteArray[0:12])
+        """ print(byteArray[0:12])
         print(byteArray[-12:])
 
         byteArrayEncoded = base64.b64encode(byteArray)
@@ -93,8 +93,8 @@ class Recorder:
         print(audioString[0:12])
         data = {'id': 1, 'audio': audioString}
         #print(data)
-        payload = json.dumps(data)
-        self.mqtt_client.publish(self.device.make_topic_string("/audio"), payload=imageStringEncoded, qos=2, retain=True)
+        payload = json.dumps(data) """
+        self.mqtt_client.publish(self.device.make_topic_string("/audio"), payload=byteArray, qos=2, retain=True)
         #print(imageStringEncoded)
 
 

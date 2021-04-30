@@ -52,7 +52,7 @@ class Receiver:
 
         play_voice_message = {
             'name': 'play_voice_message',
-            'entry': 'state("play_voice_message");play_message'
+            'entry': 'state("play_voice_message");play_message()'
         }
 
         self.stm = Machine(name='receiver', transitions=[t0, t1, t2, t3, t4], obj=self,
@@ -80,17 +80,17 @@ class Receiver:
         f.write(imageStringDecoded)
         f.close()
         print("RECEIVER: audio written")
-        self.stm.send("message") """
-        data = msg.payload.decode("utf-8")
+        self.stm.send("message") 
+         data = msg.payload
 
         bytearr = bytearray(data)
-        imageStringDecoded = base64.b64decode(bytearr)
-        print("decoded")
+        print("decoded") """
         f = open("input.wav", 'wb')
-        f.write(imageStringDecoded)
+        f.write(msg.payload)
         f.close()
         print("RECEIVER: audio written")
         self.stm.send("message")
+        print("message sent")
 
     def play_message(self):
         filename = 'input.wav'
