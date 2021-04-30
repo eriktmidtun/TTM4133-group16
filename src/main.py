@@ -101,7 +101,8 @@ def application(main_driver, second_driver):
             button_in.update(disabled=False)
             button_out.update(disabled=True)
         if event == 'Message':
-            main_driver.send("message", "receiver")
+            play_sound('output.wav')
+            #main_driver.send("message", "receiver")
     main_driver.stop()
     second_driver.stop()
     window.close()

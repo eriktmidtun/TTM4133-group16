@@ -86,11 +86,11 @@ class Receiver:
         bytearr = bytearray(data)
         print("decoded") """
         f = open("input.wav", 'wb')
+        print("payload", msg.payload)
         f.write(msg.payload)
         f.close()
         print("RECEIVER: audio written")
         self.stm.send("message")
-        print("message sent")
 
     def play_message(self):
         filename = 'input.wav'

@@ -26,7 +26,7 @@ class Recorder:
         t2 = {'trigger': 'done', 'source': 'recording', 'target': 'processing'}
         t3 = {'trigger': 'done', 'source': 'processing', 'target': 'ready'}
 
-        s_recording = {'name': 'recording', 'do': 'record()', "stop": "stop()", "start_timer": "start_timer('stop', 000)"}
+        s_recording = {'name': 'recording', 'do': 'record()', "stop": "stop()", "start_timer": "start_timer('stop', 2000)"}
         s_processing = {'name': 'processing', 'do': 'process()'}
 
         self.stm = Machine(name='recorder', transitions=[t0, t1, t2, t3], states=[
@@ -94,7 +94,7 @@ class Recorder:
         data = {'id': 1, 'audio': audioString}
         #print(data)
         payload = json.dumps(data) """
-        self.mqtt_client.publish(self.device.make_topic_string("/audio"), payload=byteArray, qos=2, retain=True)
+        self.mqtt_client.publish(self.device.make_topic_string("/audio"), payload=byteArray, qos=2)
         #print(imageStringEncoded)
 
 
