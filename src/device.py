@@ -4,6 +4,7 @@ from play_sound import play_sound
 import json
 import logging
 from recorder import Recorder
+from receiver import Receiver
 
 MQTT_BROKER = 'mqtt.item.ntnu.no'
 MQTT_PORT = 1883
@@ -211,7 +212,9 @@ class Device(object):
         self.channel_available = False
         self._logger = logging.getLogger(__name__)
         self.recorder = Recorder(self.mqtt_client, self)
+        self.receiver = Receiver(self)
         self.driver.add_machine(self.recorder.stm)
+        self.driver.add_machine(self.receiver.stm)
 
     def set_channel(self, channel):
         if channel == None:
@@ -234,11 +237,14 @@ class Device(object):
     def on_subscribe(self, client, userdata, mid, granted_qos):
         client.message_callback_add(self.make_topic_string(
             "/reserve"), self.on_reserve_message)
+        client.message_callback_add(self.make_topic_string(
+            "/audio"), self.receiver.on_audio_message)
         self._logger.debug('MQTT subsribed to {}'.format(
             self.make_topic_string("/#")))
 
     def on_unsubscribe(self, client, userdata, mid):
         client.message_callback_remove(self.make_topic_string("/reserve"))
+        client.message_callback_remove(self.make_topic_string("/audio"))
         self._logger.debug('MQTT unsubsribed from topic')
 
     def on_reserve_message(self, client, userdata, msg):

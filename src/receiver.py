@@ -2,11 +2,12 @@ from stmpy import Driver, Machine
 import pyaudio
 import wave
 from play_sound import play_sound
+import base64 
+import json
 
 
 class Receiver:
-    def __init__(self, mqtt_client):
-        self.mqtt_client = mqtt_client
+    def __init__(self, device):
 
         # DEFINING THE TRANSITIONS
         t0 = {'source': 'initial',
@@ -57,9 +58,30 @@ class Receiver:
         self.stm = Machine(name='receiver', transitions=[t0, t1, t2, t3, t4], obj=self,
                            states=[receiver_on, receiver_off, play_voice_message])
 
+    def on_audio_message(self, client, userdata, msg):
+        print("RECEIVER on_audio_message")
+        filename = 'output.wav'
+        print(msg.topic, msg.payload)
+        try:
+            payload = json.loads(msg.payload.decode("utf-8"))
+        except Exception as err:
+            print('Message sent to topic {} had no valid JSON. Message ignored. {}'.format(
+                msg.topic, err))
+        print("RECEIVER: json loaded")
+        #device_id = payload.get("id")
+        audioString = payload["audio"]
+        print(audioString[0:12])
+        imageStringDecoded = base64.b64decode(bytearray(audioString))
+        print("RECEIVER: audioString decoded")
+        f = open(filename, 'wb')
+        f.write(imageStringDecoded)
+        f.close()
+        print("RECEIVER: audio written")
+        self.stm.send("message")
+
     def play_message(self):
         filename = 'output.wav'
-        print("Trying to play incoming message")
+        print("RECEIVER: Trying to play incoming message")
 
         # Set chunk size of 1024 samples per data frame
         chunk = 1024
