@@ -2,13 +2,15 @@ from stmpy import Machine, Driver
 from os import system
 import os
 import time
+import base64 
+import json
 
 import pyaudio
 import wave
 
 
 class Recorder:
-    def __init__(self):
+    def __init__(self, mqtt_client, device):
         self.recording = False
         self.chunk = 1024
         self.sample_format = pyaudio.paInt16
@@ -16,19 +18,22 @@ class Recorder:
         self.fs = 44100
         self.filename = "output.wav"
         self.p = pyaudio.PyAudio()
+        self.mqtt_client = mqtt_client
+        self.device = device
 
         t0 = {'source': 'initial', 'target': 'ready'}
         t1 = {'trigger': 'start', 'source': 'ready', 'target': 'recording'}
         t2 = {'trigger': 'done', 'source': 'recording', 'target': 'processing'}
         t3 = {'trigger': 'done', 'source': 'processing', 'target': 'ready'}
 
-        s_recording = {'name': 'recording', 'do': 'record()', "stop": "stop()"}
+        s_recording = {'name': 'recording', 'do': 'record()', "stop": "stop()", "start_timer": "start_timer('stop', 1000)"}
         s_processing = {'name': 'processing', 'do': 'process()'}
 
         self.stm = Machine(name='recorder', transitions=[t0, t1, t2, t3], states=[
               s_recording, s_processing], obj=self)
 
     def record(self):
+        print("RECOORDER starting recording")
         stream = self.p.open(format=self.sample_format,
                              channels=self.channels,
                              rate=self.fs,
@@ -37,15 +42,17 @@ class Recorder:
         self.frames = []  # Initialize array to store frames
         # Store data in chunks for 3 seconds
         self.recording = True
+        self.stm.send("start_timer")
         while self.recording:
             data = stream.read(self.chunk)
             self.frames.append(data)
-        print("done recording")
+        print("RECORDER done recording")
         # Stop and close the stream
         stream.stop_stream()
         stream.close()
         # Terminate the PortAudio interface
         self.p.terminate()
+        print("done recording")
 
     def stop(self):
         print("stop")
@@ -60,7 +67,37 @@ class Recorder:
         wf.setframerate(self.fs)
         wf.writeframes(b''.join(self.frames))
         wf.close()
+        
+
+        f = open("output.wav", "rb")
+        imagestring = f.read()
+        f.close()
+
+        # endoding
+        byteArray = bytearray(imagestring)
+        print(byteArray[0:12])
+        print(byteArray[-12:])
+        imageStringEncoded = base64.b64encode(byteArray)
         print("done processing")
+        print("start sending")
+        data = {'id': 1, 'audio': str(imageStringEncoded)}
+        print(data)
+        payload = json.dumps(data)
+        self.mqtt_client.publish(self.device.make_topic_string("audio"), payload=payload, qos=2, retain=True)
+        #print(imageStringEncoded)
+
+
+
+
+
+
+
+# here we have it as a string, that should be safe to send via JSON
+
+
+# Decoding
+
+
 
 
 """ recorder = Recorder()
@@ -79,4 +116,5 @@ time.sleep(2)
 print("wait is over")
 driver.send('stop', 'recorder')
 print("sent stop")
-driver.stop() """
+time.sleep(2)
+driver.stop()  """

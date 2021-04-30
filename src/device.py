@@ -2,11 +2,13 @@ import stmpy
 import paho.mqtt.client as mqtt
 from play_sound import play_sound
 import json
+import logging
+from recorder import Recorder
 
 MQTT_BROKER = 'mqtt.item.ntnu.no'
 MQTT_PORT = 1883
 
-MQTT_TOPIC_CHANNEL_BASE = 'ttm4115/team_16/channel/'
+MQTT_TOPIC_CHANNEL_BASE = 'ttm4115/team_16/test/channel/'
 
 
 class DeviceLogic(object):
@@ -15,6 +17,7 @@ class DeviceLogic(object):
         self.component = component
         self.name = name
         self.id = id
+        self._logger = logging.getLogger(__name__)
 
         """ transitions """
         t0 = {
@@ -114,7 +117,7 @@ class DeviceLogic(object):
                            'entry': 'state("reserve_channel");channel_availability(); reserve_channel()'}
 
         speaking = {'name': 'speaking',
-                    'entry': 'state("speaking");receiver("off");start_stream_audio();',
+                    'entry': 'state("speaking");start_stream_audio();receiver("off");',
                     'exit': 'stop_stream_audio();release_channel();ack_timout("listen")'}
 
         self.stm = stmpy.Machine(name=self.name, transitions=[t0, t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12],
@@ -125,38 +128,34 @@ class DeviceLogic(object):
         if not new_channel:
             print("no channel given")
             return
-        if not self.component.get_channel():
-            self.component.set_channel(new_channel)
-            self.component.mqtt_client.subscribe(
-                MQTT_TOPIC_CHANNEL_BASE + str(new_channel) + "/#")
-            return
         self.unsubscribe_channel()
         self.component.set_channel(new_channel)
         self.component.mqtt_client.subscribe(
-            MQTT_TOPIC_CHANNEL_BASE + str(new_channel) + "/#")
+            self.component.make_topic_string("/#", channel=new_channel))
         return
 
     def unsubscribe_channel(self):
+        if self.component.get_channel() == None:
+            return
+        channel_topic = self.component.make_topic_string("/#")
         self.component.set_channel(None)
-        channel_topic = MQTT_TOPIC_CHANNEL_BASE + \
-            str(self.component.get_channel()) + "/#"
         self.component.mqtt_client.unsubscribe(channel_topic)
 
     def channel_availability(self):
+        return True  # TODO fix this
         if not self.component.is_channel_available():
-            self.component.driver.send('channel_unavailable', 'device')
+            self.stm.send('channel_unavailable')
             return False
-        return True
 
     def reserve_channel(self):
-        reserve_topic = MQTT_TOPIC_CHANNEL_BASE + \
-            str(self.component.get_channel()) + "/reserve"
+        reserve_topic = self.component.make_topic_string("/reserve")
         data = {"device_id": self.id, "reserved": True}
-        self.component.publish_message(reserve_topic, data, retain=True)
+        self.component.publish_message(reserve_topic, data)  # , retain=True)
+        self.stm.send("channel_reserved")
+        print("self.stm.send('channel_reserved')")
 
     def release_channel(self):
-        reserve_topic = MQTT_TOPIC_CHANNEL_BASE + \
-            str(self.component.get_channel()) + "/reserve"
+        reserve_topic = self.component.make_topic_string("/reserve")
         data = {"device_id": self.id, "reserved": False}
         self.component.publish_message(reserve_topic, data, retain=True)
 
@@ -164,15 +163,17 @@ class DeviceLogic(object):
         self.component.driver.send(message, "receiver")
 
     def start_stream_audio(self):
-        self.component.driver.send("start", "receiver")
+        print("start_stream_audio")
+        self.component.driver.send("start", "recorder")
 
     def stop_stream_audio(self):
-        self.component.driver.send("done", "receiver")
+        print("stop_stream_audio")
+        self.stm.driver.send("done", "recorder")
 
     def ack_timout(self, message):
         if message != "listen":
             return  # Error
-        self.component.driver.send(message, "ack_timeout")
+        self.stm.driver.send(message, "ack_timeout")
         return
 
     def voice_recognizer(self, message):
@@ -181,6 +182,7 @@ class DeviceLogic(object):
 
     def play_unavailable_sound(self):
         try:
+            print("error sound")
             play_sound("./src/assets/audio/error_sound.wav")
         except:
             print("Error sound could not be played")
@@ -196,8 +198,9 @@ class Device(object):
     def __init__(self, driver, second_driver):
         self.mqtt_client = mqtt.Client()
         self.mqtt_client.on_connect = self.on_connect
-        self.mqtt_client.on_message = self.on_message
+        #self.mqtt_client.on_message = self.on_message
         self.mqtt_client.on_subscribe = self.on_subscribe
+        self.mqtt_client.on_unsubscribe = self.on_unsubscribe
         self.mqtt_client.connect(MQTT_BROKER, MQTT_PORT)
         self.mqtt_client.loop_start()
         self.driver = driver
@@ -206,6 +209,9 @@ class Device(object):
         self.second_driver = second_driver
         self.channel = None
         self.channel_available = False
+        self._logger = logging.getLogger(__name__)
+        self.recorder = Recorder(self.mqtt_client, self)
+        self.driver.add_machine(self.recorder.stm)
 
     def set_channel(self, channel):
         if channel == None:
@@ -223,10 +229,27 @@ class Device(object):
 
     def on_connect(self, client, userdata, flags, rc):
         print("userdata", userdata, "\nflags", flags, "\nrc", rc)
-        print("connected")
+        self._logger.debug('MQTT connected to {}'.format(client))
 
     def on_subscribe(self, client, userdata, mid, granted_qos):
-        print("subscribed")
+        client.message_callback_add(self.make_topic_string(
+            "/reserve"), self.on_reserve_message)
+        self._logger.debug('MQTT subsribed to {}'.format(
+            self.make_topic_string("/#")))
+
+    def on_unsubscribe(self, client, userdata, mid):
+        client.message_callback_remove(self.make_topic_string("/reserve"))
+        self._logger.debug('MQTT unsubsribed from topic')
+
+    def on_reserve_message(self, client, userdata, msg):
+        self._logger.debug(
+            'MQTT message on topic {} \n {}'.format(msg.topic, msg))
+        print(msg.topic, msg.payload)
+        try:
+            payload = json.loads(msg.payload.decode("utf-8"))
+        except Exception as err:
+            self._logger.error('Message sent to topic {} had no valid JSON. Message ignored. {}'.format(
+                msg.topic, err))
 
     def on_message(self, client, userdata, msg):
         print("on_message: ", "userdata", userdata, "\nmsg", msg)
@@ -240,3 +263,8 @@ class Device(object):
     def publish_message(self, topic, data, retain=False):
         payload = json.dumps(data)
         self.mqtt_client.publish(topic, payload=payload, qos=2, retain=retain)
+
+    def make_topic_string(self, sub_topic, channel=None):
+        if not channel:
+            return MQTT_TOPIC_CHANNEL_BASE + str(self.get_channel()) + sub_topic
+        return MQTT_TOPIC_CHANNEL_BASE + str(channel) + sub_topic

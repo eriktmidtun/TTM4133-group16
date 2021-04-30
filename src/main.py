@@ -2,9 +2,10 @@ import stmpy
 import paho.mqtt.client as mqtt
 import time
 import PySimpleGUI as sg
+import logging
 
 from device import Device
-from play_sound import play_sound
+from play_sound import play_sound 
 #from recorder import Recorder
 from voice_recognizer import VoiceRecognizer
 from receiver import Receiver
@@ -44,9 +45,23 @@ voicerecognizer = VoiceRecognizer(main_driver)
 main_driver.add_machine(device.stm)
 #main_driver.add_machine(recorder.stm)
 main_driver.add_machine(receiver.stm)
-second_driver.add_machine(voicerecognizer.stm)
+#second_driver.add_machine(voicerecognizer.stm)
 
 def application(main_driver, second_driver):
+    # logging.DEBUG: Most fine-grained logging, printing everything
+    # logging.INFO:  Only the most important informational log items
+    # logging.WARN:  Show only warnings and errors.
+    # logging.ERROR: Show only error messages.
+    debug_level = logging.DEBUG
+    logger = logging.getLogger(__name__)
+    logger.setLevel(debug_level)
+    ch = logging.StreamHandler()
+    ch.setLevel(debug_level)
+    formatter = logging.Formatter('%(asctime)s - %(name)-12s - %(levelname)-8s - %(message)s')
+    ch.setFormatter(formatter)
+    logger.addHandler(ch)
+
+
     channel = ''
     oldChannel = ''
     main_driver.start(keep_active=True)
