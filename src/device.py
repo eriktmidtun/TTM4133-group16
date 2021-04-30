@@ -142,11 +142,11 @@ class DeviceLogic(object):
         self.component.set_channel(None)
         self.component.mqtt_client.unsubscribe(channel_topic)
 
-    def channel_availability(self):
-        return True  # TODO fix this
+    def channel_availability(self,payload):
         if not self.component.is_channel_available():
             self.stm.send('channel_unavailable')
             return False
+        return True
 
     def reserve_channel(self):
         reserve_topic = self.component.make_topic_string("/reserve")
@@ -258,6 +258,8 @@ class Device(object):
         except Exception as err:
             self._logger.error('Message sent to topic {} had no valid JSON. Message ignored. {}'.format(
                 msg.topic, err))
+        reserved = payload["reserved"]
+        self.set_channel_availability(reserved)
 
     def on_message(self, client, userdata, msg):
         print("on_message: ", "userdata", userdata, "\nmsg", msg)
