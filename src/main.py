@@ -37,14 +37,14 @@ main_driver = stmpy.Driver()
 second_driver = stmpy.Driver()
 device = Device(main_driver, second_driver)
 #recorder = Recorder()  
-receiver = Receiver(mqtt_client)
+#receiver = Receiver(mqtt_client)
 #ackTimeout = AckTimeout(mqtt_client)
 
 voicerecognizer = VoiceRecognizer(main_driver)
 
 main_driver.add_machine(device.stm)
 #main_driver.add_machine(recorder.stm)
-main_driver.add_machine(receiver.stm)
+#main_driver.add_machine(receiver.stm)
 #second_driver.add_machine(voicerecognizer.stm)
 
 def application(main_driver, second_driver):

@@ -161,6 +161,7 @@ class DeviceLogic(object):
         self.component.publish_message(reserve_topic, data, retain=True)
 
     def receiver(self, message):
+        print("sendt on to receiver")
         self.component.driver.send(message, "receiver")
 
     def start_stream_audio(self):
