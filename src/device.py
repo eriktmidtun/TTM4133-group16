@@ -73,6 +73,7 @@ class DeviceLogic(object):
             "trigger": "channel_reserved",
             "source": "reserve_channel",
             "target": "speaking",
+            "effect": "play_success_sound",
         }
 
         t8 = {
@@ -85,6 +86,7 @@ class DeviceLogic(object):
             "trigger": "over",
             "source": "speaking",
             "target": "idle",
+            "effect": "play_success_sound",
         }
 
         t10 = {
@@ -166,7 +168,7 @@ class DeviceLogic(object):
         self.component.mqtt_client.unsubscribe(channel_topic)
 
     def channel_availability(self):
-        if not self.component.is_channel_available():
+        if self.component.is_channel_available():
             self.stm.send('channel_unavailable')
             return False
         return True
@@ -251,6 +253,13 @@ class DeviceLogic(object):
             play_sound("./src/assets/audio/error_sound.wav")
         except:
             print("Error sound could not be played")
+
+    def play_success_sound(self):
+        try:
+            play_sound("./src/assets/audio/pling.wav")
+        except:
+            print("Success sound could not be played")
+
 
     def state(self, state):
         if not state:

@@ -49,9 +49,9 @@ device = Device(main_driver, second_driver, device_id)
 voicerecognizer = VoiceRecognizer(main_driver)
 
 main_driver.add_machine(device.stm)
-#main_driver.add_machine(recorder.stm)
-#main_driver.add_machine(receiver.stm)
-#second_driver.add_machine(voicerecognizer.stm)
+# main_driver.add_machine(recorder.stm)
+# main_driver.add_machine(receiver.stm)
+second_driver.add_machine(voicerecognizer.stm)
 
 def application(main_driver, second_driver):
     # logging.DEBUG: Most fine-grained logging, printing everything
