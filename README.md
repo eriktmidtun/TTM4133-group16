@@ -7,7 +7,7 @@ We made a Walkietalkie program in python using MQTT and state machines. The walk
 ### Contributors
 * Erik Turøy Midtun
 * Simen Melleby Aarnseth
-* Wiktor Zhao
+* Wictor Zhao
 * Ingrid Nord
  
 ### Prerequisites
