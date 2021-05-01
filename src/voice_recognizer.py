@@ -6,7 +6,7 @@ import pyaudio
 
 class VoiceRecognizer:
 
-    def __init__(self, device_driver, wake_word="google", end_word="over"):
+    def __init__(self, device_driver, wake_word="delta", end_word="over"):
         self.over = False
         self.r = sr.Recognizer()
         self.mic = sr.Microphone(device_index=choose_from_available_devices())

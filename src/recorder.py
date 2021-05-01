@@ -23,10 +23,10 @@ class Recorder:
 
         t0 = {'source': 'initial', 'target': 'ready'}
         t1 = {'trigger': 'start', 'source': 'ready', 'target': 'recording'}
-        t2 = {'trigger': 'done', 'source': 'recording', 'target': 'processing'}
+        t2 = {'trigger': 'done', 'source': 'recording', 'target': 'processing', 'effect': 'stop'}
         t3 = {'trigger': 'done', 'source': 'processing', 'target': 'ready'}
 
-        s_recording = {'name': 'recording', 'do': 'record()', "stop": "stop()", "start_timer": "start_timer('stop', 6000)"}
+        s_recording = {'name': 'recording', 'do': 'record()', "stop": "stop()", "start_timer": "start_timer('stop', 5000)"}
         s_processing = {'name': 'processing', 'do': 'process()'}
 
         self.stm = Machine(name='recorder', transitions=[t0, t1, t2, t3], states=[
