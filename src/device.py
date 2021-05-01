@@ -3,6 +3,8 @@ import paho.mqtt.client as mqtt
 from play_sound import play_sound
 import json
 import logging
+import pyaudio
+import wave
 from recorder import Recorder
 from receiver import Receiver
 
@@ -19,6 +21,7 @@ class DeviceLogic(object):
         self.name = name
         self.id = id
         self._logger = logging.getLogger(__name__)
+        print("DEVICE id", self.id)
 
         """ transitions """
         t0 = {
@@ -104,6 +107,22 @@ class DeviceLogic(object):
             "target": "off",
         }
 
+        t13 = {'trigger': 'message',
+              'source': 'idle',
+              'target': 'play_voice_message'}
+
+        # confirm voice message is done playing
+        t14 = {'trigger': 'message_done',
+              'source': 'play_voice_message',
+              'target': 'idle'}
+
+        # error when receiving voice message
+        t15 = {'trigger': 'error',
+              'source': 'play_voice_message',
+              'target': 'idle',
+              'effect': 'play_error_sound'}
+
+
         """ control states """
         off = {'name': 'off',
                'entry': "state('off')"}
@@ -112,7 +131,7 @@ class DeviceLogic(object):
                       'entry': "state('no_channel')"}
 
         idle = {'name': 'idle',
-                'entry': 'state("idle");receiver("on");voice_recognizer("wake")'}
+                'entry': 'state("idle");voice_recognizer("wake")'}
 
         reserve_channel = {'name': 'reserve_channel',
                            'entry': 'state("reserve_channel");channel_availability(); reserve_channel()'}
@@ -120,9 +139,13 @@ class DeviceLogic(object):
         speaking = {'name': 'speaking',
                     'entry': 'state("speaking");start_stream_audio();receiver("off");',
                     'exit': 'stop_stream_audio();release_channel();ack_timout("listen")'}
+        play_voice_message = {
+            'name': 'play_voice_message',
+            'entry': 'state("play_voice_message");play_message()'
+        }
 
-        self.stm = stmpy.Machine(name=self.name, transitions=[t0, t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12],
-                                 states=[off, no_channel, idle, reserve_channel, speaking], obj=self)
+        self.stm = stmpy.Machine(name=self.name, transitions=[t0, t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14,t15 ],
+                                 states=[off, no_channel, idle, reserve_channel, speaking, play_voice_message], obj=self)
 
     def change_channel(self, channel):
         new_channel = channel
@@ -149,6 +172,8 @@ class DeviceLogic(object):
         return True
 
     def reserve_channel(self):
+        """ if not self.channel_availability():
+            return """
         reserve_topic = self.component.make_topic_string("/reserve")
         data = {"device_id": self.id, "reserved": True}
         self.component.publish_message(reserve_topic, data)  # , retain=True)
@@ -182,6 +207,44 @@ class DeviceLogic(object):
         print("DEVICE, voice_recognizer message : ", message)
         self.component.second_driver.send(message, "voice_recognizer")
 
+    def play_message(self):
+        filename = 'input.wav'
+        print("RECEIVER: Trying to play incoming message")
+
+        # Set chunk size of 1024 samples per data frame
+        chunk = 1024
+        try:
+            # Open the sound file
+            wf = wave.open(filename, 'rb')
+
+            # Create an interface to PortAudio
+            p = pyaudio.PyAudio()
+
+            # Open a .Stream object to write the WAV file to
+            # 'output = True' indicates that the sound will be played rather than recorded
+            stream = p.open(format=p.get_format_from_width(wf.getsampwidth()),
+                            channels=wf.getnchannels(),
+                            rate=wf.getframerate(),
+                            output=True)
+
+            # Read data in chunks
+            data = wf.readframes(chunk)
+
+            # Play the sound by writing the audio data to the stream
+            while data != '':
+                stream.write(data)
+                data = wf.readframes(chunk)
+                if len(data) == 0:
+                    break
+
+            # Close and terminate the stream
+            stream.close()
+            p.terminate()
+            self.stm.send('message_done')
+            print("message done")
+        except:
+            self.stm.send('error')
+        
     def play_unavailable_sound(self):
         try:
             print("error sound")
@@ -197,7 +260,7 @@ class DeviceLogic(object):
 
 class Device(object):
 
-    def __init__(self, driver, second_driver):
+    def __init__(self, driver, second_driver, device_id):
         self.mqtt_client = mqtt.Client()
         self.mqtt_client.on_connect = self.on_connect
         #self.mqtt_client.on_message = self.on_message
@@ -206,16 +269,17 @@ class Device(object):
         self.mqtt_client.connect(MQTT_BROKER, MQTT_PORT)
         self.mqtt_client.loop_start()
         self.driver = driver
-        self.device = DeviceLogic(self)
+        self.device = DeviceLogic(self, id=device_id)
         self.stm = self.device.stm
         self.second_driver = second_driver
         self.channel = None
         self.channel_available = False
+        self.has_channel = False
         self._logger = logging.getLogger(__name__)
         self.recorder = Recorder(self.mqtt_client, self)
-        self.receiver = Receiver(self)
+        #self.receiver = Receiver(self)
         self.driver.add_machine(self.recorder.stm)
-        self.driver.add_machine(self.receiver.stm)
+        #self.driver.add_machine(self.receiver.stm)
 
     def set_channel(self, channel):
         if channel == None:
@@ -238,15 +302,15 @@ class Device(object):
     def on_subscribe(self, client, userdata, mid, granted_qos):
         client.message_callback_add(self.make_topic_string(
             "/reserve"), self.on_reserve_message)
-        audiotopic = self.make_topic_string("/audio")
+        audiotopic = self.make_topic_string("/audio/+")
         print("Trying to make callback", audiotopic)
-        client.message_callback_add(audiotopic, self.receiver.on_audio_message)
+        client.message_callback_add(audiotopic, self.on_audio_message)
         self._logger.debug('MQTT subsribed to {}'.format(
             self.make_topic_string("/#")))
 
     def on_unsubscribe(self, client, userdata, mid):
         client.message_callback_remove(self.make_topic_string("/reserve"))
-        client.message_callback_remove(self.make_topic_string("/audio"))
+        client.message_callback_remove(self.make_topic_string("/audio/+"))
         self._logger.debug('MQTT unsubsribed from topic')
 
     def on_reserve_message(self, client, userdata, msg):
@@ -259,7 +323,19 @@ class Device(object):
             self._logger.error('Message sent to topic {} had no valid JSON. Message ignored. {}'.format(
                 msg.topic, err))
         reserved = payload["reserved"]
+        device_id = payload["device_id"]
         self.set_channel_availability(reserved)
+
+    def on_audio_message(self, client, userdata, msg):
+        print("on_audio_message" ,msg.topic, "payload size:", len(msg.payload))
+        f = open("input.wav", 'wb')
+        device_id = msg.topic.split("/")[-1]
+        print("device_id", device_id)
+        if str(device_id) != str(self.device.id):
+            f.write(msg.payload)
+            f.close()
+            print("on_audio_message: audio written")
+            self.stm.send("message")
 
     def on_message(self, client, userdata, msg):
         print("on_message: ", "userdata", userdata, "\nmsg", msg)

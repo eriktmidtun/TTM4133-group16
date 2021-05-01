@@ -26,7 +26,7 @@ class Recorder:
         t2 = {'trigger': 'done', 'source': 'recording', 'target': 'processing'}
         t3 = {'trigger': 'done', 'source': 'processing', 'target': 'ready'}
 
-        s_recording = {'name': 'recording', 'do': 'record()', "stop": "stop()", "start_timer": "start_timer('stop', 2000)"}
+        s_recording = {'name': 'recording', 'do': 'record()', "stop": "stop()", "start_timer": "start_timer('stop', 6000)"}
         s_processing = {'name': 'processing', 'do': 'process()'}
 
         self.stm = Machine(name='recorder', transitions=[t0, t1, t2, t3], states=[
@@ -68,34 +68,14 @@ class Recorder:
         wf.writeframes(b''.join(self.frames))
         wf.close()
         
-
         f = open("output.wav", "rb")
         imagestring = f.read()
         f.close()
 
         # endoding
         byteArray = bytearray(imagestring)
-        """ print(byteArray[0:12])
-        print(byteArray[-12:])
-
-        byteArrayEncoded = base64.b64encode(byteArray)
-        imageStringEncoded = base64.b64encode(imagestring)
-        #print("bytearrayEncoded", byteArrayEncoded)
-        #print("imageStringEncoded", imageStringEncoded)
-        #print('imageStringEncoded utf8',imageStringEncoded.decode('utf-8') )
-
-        #print(imageStringEncoded[0:12])
-        #print(imageStringEncoded[-12:])
-        print("type",type(imageStringEncoded))
-        print("done processing")
-        print("start sending")
-        audioString = imageStringEncoded.decode('utf-8')
-        print(audioString[0:12])
-        data = {'id': 1, 'audio': audioString}
-        #print(data)
-        payload = json.dumps(data) """
-        self.mqtt_client.publish(self.device.make_topic_string("/audio"), payload=byteArray, qos=2)
-        #print(imageStringEncoded)
+        self.mqtt_client.publish(self.device.make_topic_string("/audio/" + str(self.device.device.id)), payload=byteArray, qos=2)
+        self.stm.send("")
 
 
 

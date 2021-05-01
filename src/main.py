@@ -3,6 +3,7 @@ import paho.mqtt.client as mqtt
 import time
 import PySimpleGUI as sg
 import logging
+import sys
 
 from device import Device
 from play_sound import play_sound 
@@ -32,12 +33,15 @@ layout = [[sg.Text('Choose channel to subscribe to', key='_TextBox_',font=('Helv
           [sg.Button('Message', font=('Helvetica',20))]]
 window = sg.Window('Braze device', layout, size=(1000,500))
 
+device_id = 0
+if len(sys.argv) > 1:
+    device_id = sys.argv[1]
 
 """ Setup """
 mqtt_client = mqtt.Client()
 main_driver = stmpy.Driver()
 second_driver = stmpy.Driver()
-device = Device(main_driver, second_driver)
+device = Device(main_driver, second_driver, device_id)
 #recorder = Recorder()  
 #receiver = Receiver(mqtt_client)
 #ackTimeout = AckTimeout(mqtt_client)

@@ -1,4 +1,5 @@
-import stmpy
+from stmpy import Machine
+
 
 
 class AckTimeout:
@@ -28,7 +29,7 @@ class AckTimeout:
                                  'exit': 'stop_timer("t")'}
 
         self.stm = Machine(name='ack_timeout', transitions=[
-            t0, t1, t2], obj=ack_timeout, states=[idle, listen_heard_messages])
+            t0, t1, t2], obj=self, states=[idle, listen_heard_messages])
 
     def play_error(self):
-        pass
+        s

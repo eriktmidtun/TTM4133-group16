@@ -86,7 +86,7 @@ class Receiver:
         bytearr = bytearray(data)
         print("decoded") """
         f = open("input.wav", 'wb')
-        print("payload", msg.payload)
+        #print("payload", msg.payload)
         f.write(msg.payload)
         f.close()
         print("RECEIVER: audio written")
