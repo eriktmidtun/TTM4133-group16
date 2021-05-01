@@ -142,7 +142,7 @@ class DeviceLogic(object):
         self.component.set_channel(None)
         self.component.mqtt_client.unsubscribe(channel_topic)
 
-    def channel_availability(self,payload):
+    def channel_availability(self):
         if not self.component.is_channel_available():
             self.stm.send('channel_unavailable')
             return False

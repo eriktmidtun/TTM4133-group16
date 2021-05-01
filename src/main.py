@@ -23,7 +23,9 @@ layout = [[sg.Text('Choose channel to subscribe to', key='_TextBox_',font=('Helv
                      default_value=5,
                      size=(600, 25),
                      orientation='horizontal',
-                     font=('Helvetica', 20))],
+                     font=('Helvetica', 20),
+                     enable_events=True,
+                     key='slider')],
           [button_subscribe, button_unsubscribe],
           [button_in, button_out],
           [sg.Button('Power off', font=('Helvetica',20))],
@@ -63,33 +65,42 @@ def application(main_driver, second_driver):
 
 
     channel = ''
-    oldChannel = ''
     main_driver.start(keep_active=True)
     second_driver.start(keep_active=True)
     main_driver.send("switch_on", "device")
     # Event Loop to process "events" and get the "values" of the inputs
     while True:
         event, values = window.read()
+        window.refresh()
         if event == sg.WIN_CLOSED or event == 'Power off':  # if user closes window or clicks cancel
             break
         if event == 'Subscribe to channel':
-            channel = str(int(values[0]))
+            channel = str(int(values['slider']))
             main_driver.send("subscribe_channel", "device",
                         kwargs=({"channel": channel}))
             button_in.update(disabled=False)
             button_unsubscribe.update(disabled=False)
+            button_subscribe.update(disabled=True)
+            button_unsubscribe.update('Unsubscribe to channel ' + channel)
             if device.get_channel() != None:
                 print('You are subscribed to channel ' + channel)
+                print(type(str(channel)))
                 window['_TextBox_'].update(
-                    'You are subscribed to channel ' + channel)
+                    'Subscribed to channel ' + channel)
+
+        if event == 'slider':
+            channel = str(int(values['slider']))
+            button_subscribe.update(disabled=False)
+            button_subscribe.update('Subscribe to channel ' + channel)
 
         if event == 'Unsubscribe':
-            oldChannel = str(int(values[0]))
-            print('You are unsubscribed from channel ', oldChannel)
+            print('Unsubscribed from channel')
             window['_TextBox_'].update('No active subscriptions')
             main_driver.send("unsubscribe_channel", "device")
             button_in.update(disabled=True)
             button_unsubscribe.update(disabled=True)
+            button_subscribe.update(disabled=False)
+            button_unsubscribe.update('Unsubscribe')
 
         if event == 'Button_in':
             main_driver.send("button_in", "device",
