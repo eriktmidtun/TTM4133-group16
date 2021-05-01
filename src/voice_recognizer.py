@@ -133,6 +133,7 @@ def print_devices():
             print('VOICERECOGNIZER', "Input Device id ", i, " - ",
                   p.get_device_info_by_host_api_device_index(0, i), "\n")
 
+
 def choose_from_available_devices(index=0):
     p = pyaudio.PyAudio()
     info = p.get_host_api_info_by_index(0)

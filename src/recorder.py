@@ -2,7 +2,7 @@ from stmpy import Machine, Driver
 from os import system
 import os
 import time
-import base64 
+import base64
 import json
 
 import pyaudio
@@ -14,7 +14,7 @@ class Recorder:
         self.recording = False
         self.chunk = 1024
         self.sample_format = pyaudio.paInt16
-        self.channels = 2
+        self.channels = 2  # you might change this based on your mic
         self.fs = 44100
         self.filename = "output.wav"
         self.p = pyaudio.PyAudio()
@@ -23,22 +23,25 @@ class Recorder:
 
         t0 = {'source': 'initial', 'target': 'ready'}
         t1 = {'trigger': 'start', 'source': 'ready', 'target': 'recording'}
-        t2 = {'trigger': 'done', 'source': 'recording', 'target': 'processing', 'effect': 'stop'}
+        t2 = {'trigger': 'done', 'source': 'recording',
+              'target': 'processing', 'effect': 'stop'}
         t3 = {'trigger': 'done', 'source': 'processing', 'target': 'ready'}
 
-        s_recording = {'name': 'recording', 'do': 'record()', "stop": "stop()", "start_timer": "start_timer('stop', 5000)"}
+        s_recording = {'name': 'recording', 'do': 'record()',
+                       "stop": "stop()", "start_timer": "start_timer('stop', 5000)"}
         s_processing = {'name': 'processing', 'do': 'process()'}
 
         self.stm = Machine(name='recorder', transitions=[t0, t1, t2, t3], states=[
-              s_recording, s_processing], obj=self)
+            s_recording, s_processing], obj=self)
 
     def record(self):
-        print("RECOORDER starting recording")
         stream = self.p.open(format=self.sample_format,
                              channels=self.channels,
                              rate=self.fs,
                              frames_per_buffer=self.chunk,
-                             input=True)
+                             input=True
+                             # input_device_index=x to specify mic input
+                             )
         self.frames = []  # Initialize array to store frames
         # Store data in chunks for 3 seconds
         self.recording = True
@@ -46,20 +49,16 @@ class Recorder:
         while self.recording:
             data = stream.read(self.chunk)
             self.frames.append(data)
-        print("RECORDER done recording")
         # Stop and close the stream
         stream.stop_stream()
         stream.close()
         # Terminate the PortAudio interface
         self.p.terminate()
-        print("done recording")
 
     def stop(self):
-        print("stop")
         self.recording = False
 
     def process(self):
-        print("processing")
         # Save the recorded data as a WAV file
         wf = wave.open(self.filename, 'wb')
         wf.setnchannels(self.channels)
@@ -67,45 +66,13 @@ class Recorder:
         wf.setframerate(self.fs)
         wf.writeframes(b''.join(self.frames))
         wf.close()
-        
+
         f = open("output.wav", "rb")
         imagestring = f.read()
         f.close()
 
         # endoding
         byteArray = bytearray(imagestring)
-        self.mqtt_client.publish(self.device.make_topic_string("/audio/" + str(self.device.device.id)), payload=byteArray, qos=2)
+        self.mqtt_client.publish(self.device.make_topic_string(
+            "/audio/" + str(self.device.device.id)), payload=byteArray, qos=2)
         self.device.driver.send("over", "device")
-
-
-
-
-
-
-
-# here we have it as a string, that should be safe to send via JSON
-
-
-# Decoding
-
-
-
-
-""" recorder = Recorder()
-
-stm = recorder.stm
-
-driver = Driver()
-driver.add_machine(stm)
-driver.start()
-
-print("driver started")
-
-driver.send('start', 'recorder')
-print("sent start, now waiting for a 2 seconds long recording")
-time.sleep(2)
-print("wait is over")
-driver.send('stop', 'recorder')
-print("sent stop")
-time.sleep(2)
-driver.stop()  """

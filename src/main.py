@@ -6,20 +6,18 @@ import logging
 import sys
 
 from device import Device
-from play_sound import play_sound 
-#from recorder import Recorder
+from play_sound import play_sound
 from voice_recognizer import VoiceRecognizer
-from receiver import Receiver
-#from ack_timout import AckTimeout
 
 """ GUI """
 sg.theme('DarkBlue')
-button_subscribe = sg.Button('Subscribe to channel',font=('Helvetica',20))
-button_unsubscribe = sg.Button('Unsubscribe', disabled=True, font=('Helvetica',20))
-button_in = sg.Button('Button_in', disabled=True, font=('Helvetica',20))
-button_out= sg.Button('Button_out', disabled=True, font=('Helvetica',20))
+button_subscribe = sg.Button('Subscribe to channel', font=('Helvetica', 20))
+button_unsubscribe = sg.Button(
+    'Unsubscribe', disabled=True, font=('Helvetica', 20))
+button_in = sg.Button('Button_in', disabled=True, font=('Helvetica', 20))
+button_out = sg.Button('Button_out', disabled=True, font=('Helvetica', 20))
 
-layout = [[sg.Text('Choose channel to subscribe to', key='_TextBox_',font=('Helvetica',20) )],
+layout = [[sg.Text('Choose channel to subscribe to', key='_TextBox_', font=('Helvetica', 20))],
           [sg.Slider(range=(1, 10),
                      default_value=5,
                      size=(600, 25),
@@ -29,9 +27,9 @@ layout = [[sg.Text('Choose channel to subscribe to', key='_TextBox_',font=('Helv
                      key='slider')],
           [button_subscribe, button_unsubscribe],
           [button_in, button_out],
-          [sg.Button('Power off', font=('Helvetica',20))],
-          [sg.Button('Message', font=('Helvetica',20))]]
-window = sg.Window('Braze device', layout, size=(1000,500))
+          [sg.Button('Power off', font=('Helvetica', 20))],
+          [sg.Button('Message', font=('Helvetica', 20))]]
+window = sg.Window('Braze device', layout, size=(1000, 500))
 
 device_id = 0
 if len(sys.argv) > 1:
@@ -42,16 +40,13 @@ mqtt_client = mqtt.Client()
 main_driver = stmpy.Driver()
 second_driver = stmpy.Driver()
 device = Device(main_driver, second_driver, device_id)
-#recorder = Recorder()  
-#receiver = Receiver(mqtt_client)
-#ackTimeout = AckTimeout(mqtt_client)
 
 voicerecognizer = VoiceRecognizer(main_driver)
 
 main_driver.add_machine(device.stm)
-# main_driver.add_machine(recorder.stm)
-# main_driver.add_machine(receiver.stm)
+# commend out the line under to disable voice recognizion
 second_driver.add_machine(voicerecognizer.stm)
+
 
 def application(main_driver, second_driver):
     # logging.DEBUG: Most fine-grained logging, printing everything
@@ -63,10 +58,10 @@ def application(main_driver, second_driver):
     logger.setLevel(debug_level)
     ch = logging.StreamHandler()
     ch.setLevel(debug_level)
-    formatter = logging.Formatter('%(asctime)s - %(name)-12s - %(levelname)-8s - %(message)s')
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)-12s - %(levelname)-8s - %(message)s')
     ch.setFormatter(formatter)
     logger.addHandler(ch)
-
 
     channel = ''
     main_driver.start(keep_active=True)
@@ -81,14 +76,12 @@ def application(main_driver, second_driver):
         if event == 'Subscribe to channel':
             channel = str(int(values['slider']))
             main_driver.send("subscribe_channel", "device",
-                        kwargs=({"channel": channel}))
+                             kwargs=({"channel": channel}))
             button_in.update(disabled=False)
             button_unsubscribe.update(disabled=False)
             button_subscribe.update(disabled=True)
             button_unsubscribe.update('Unsubscribe to channel ' + channel)
             if device.get_channel() != None:
-                print('You are subscribed to channel ' + channel)
-                print(type(str(channel)))
                 window['_TextBox_'].update(
                     'Subscribed to channel ' + channel)
 
@@ -98,7 +91,6 @@ def application(main_driver, second_driver):
             button_subscribe.update('Subscribe to channel ' + channel)
 
         if event == 'Unsubscribe':
-            print('Unsubscribed from channel')
             window['_TextBox_'].update('No active subscriptions')
             main_driver.send("unsubscribe_channel", "device")
             button_in.update(disabled=True)
@@ -108,7 +100,7 @@ def application(main_driver, second_driver):
 
         if event == 'Button_in':
             main_driver.send("button_in", "device",
-                        kwargs=({"message": "off"}))
+                             kwargs=({"message": "off"}))
             button_in.update(disabled=True)
             button_out.update(disabled=False)
         if event == 'Button_out':
@@ -117,9 +109,9 @@ def application(main_driver, second_driver):
             button_out.update(disabled=True)
         if event == 'Message':
             play_sound('output.wav')
-            #main_driver.send("message", "receiver")
     main_driver.stop()
     second_driver.stop()
     window.close()
 
-application(main_driver,second_driver)
+
+application(main_driver, second_driver)
